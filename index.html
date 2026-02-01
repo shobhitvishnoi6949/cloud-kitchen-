@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cloud Kitchen App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+}
+.screen { display: none; min-height: 100vh; padding: 20px; }
+.active { display: block; }
+.box {
+    max-width: 400px;
+    margin: 60px auto;
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.box h2 { text-align: center; }
+.box input, .box button { width: 100%; padding: 12px; margin: 10px 0; font-size: 15px; }
+.box button { background: #ff5722; border: none; color: white; cursor: pointer; }
+.link { text-align: center; color: #ff5722; cursor: pointer; }
+header { background: #ff5722; color: white; padding: 15px; text-align: center; font-size: 22px; }
+.container { max-width: 1100px; margin: auto; padding: 15px; }
+.controls { display: flex; gap: 10px; margin-bottom: 20px; }
+.controls input, .controls select { width: 100%; padding: 10px; }
+.menu { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+.card {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+.card img { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
+.card h3 { margin: 0 0 8px; font-size: 18px; }
+.price { color: #ff5722; font-weight: bold; }
+.qty { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.qty button { width: 32px; height: 32px; border: none; background: #ff5722; color: white; font-size: 18px; border-radius: 6px; cursor: pointer; }
+.qty span { min-width: 20px; text-align: center; font-weight: bold; }
+.add-btn { margin-top: 8px; width: 100%; padding: 8px; background: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer; }
+.cart { background: white; padding: 15px; border-radius: 10px; margin-top: 25px; }
+.cart-item { display: flex; justify-content: space-between; margin: 6px 0; }
+.total { font-weight: bold; font-size: 18px; margin-top: 10px; }
+.place-order { width: 100%; padding: 12px; margin-top: 15px; background: green; color: white; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; }
+.place-order:hover { background: darkgreen; }
+</style>
+</head>
+
+<body>
+
+<div id="signup" class="screen active">
+    <div class="box">
+        <h2>Signup</h2>
+        <input id="suName" placeholder="Name">
+        <input id="suEmail" placeholder="Email">
+        <input id="suPass" type="password" placeholder="Password">
+        <button onclick="signup()">Create Account</button>
+        <div class="link" onclick="showLogin()">Already have an account?</div>
+    </div>
+</div>
+
+<div id="login" class="screen">
+    <div class="box">
+        <h2>Login</h2>
+        <input id="liEmail" placeholder="Email">
+        <input id="liPass" type="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+    </div>
+</div>
+
+<div id="location" class="screen">
+    <div class="box">
+        <h2>Allow Location</h2>
+        <button onclick="allowLocation()">Allow Location</button>
+    </div>
+</div>
+
+<div id="food" class="screen">
+<header>🍽️ Cloud Kitchen</header>
+
+<div class="container">
+    <div class="controls">
+        <input id="search" placeholder="Search food" onkeyup="renderMenu()">
+        <select id="filter" onchange="renderMenu()">
+            <option>All</option>
+            <option>Chinese</option>
+            <option>South Indian</option>
+            <option>Indian Bread</option>
+            <option>Paneer</option>
+        </select>
+    </div>
+
+    <div id="menu" class="menu"></div>
+
+    <div class="cart">
+        <h3>Cart</h3>
+        <div id="cart"></div>
+        <div id="total" class="total">Total: ₹0</div>
+        <button class="place-order" onclick="placeOrder()">Place Order</button>
+    </div>
+</div>
+</div>
+
+<script>
+let user = {};
+let cart = JSON.parse(localStorage.getItem("cart")) || {};
+
+const foods = [
+    {id:1,name:"Veg Momos",price:120,cat:"Chinese",img:"https://source.unsplash.com/220x140/?momos,food"},
+    {id:2,name:"Paneer Momos",price:150,cat:"Chinese",img:"https://source.unsplash.com/220x140/?paneer,food"},
+    {id:3,name:"Masala Dosa",price:120,cat:"South Indian",img:"https://source.unsplash.com/220x140/?dosa,food"},
+    {id:4,name:"Plain Dosa",price:90,cat:"South Indian",img:"https://source.unsplash.com/220x140/?southindian,food"},
+    {id:5,name:"Tandoori Roti",price:20,cat:"Indian Bread",img:"https://source.unsplash.com/220x140/?roti,food"},
+    {id:6,name:"Butter Naan",price:35,cat:"Indian Bread",img:"https://source.unsplash.com/220x140/?naan,food"},
+    {id:7,name:"Shahi Paneer",price:220,cat:"Paneer",img:"https://source.unsplash.com/220x140/?paneer-curry,food"},
+    {id:8,name:"Paneer Butter Masala",price:240,cat:"Paneer",img:"https://source.unsplash.com/220x140/?butter-paneer,food"}
+];
+
+function show(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active")); document.getElementById(id).classList.add("active"); }
+function showLogin(){ show("login"); }
+function signup(){ user={name:suName.value,email:suEmail.value,pass:suPass.value}; show("login"); }
+function login(){ if(liEmail.value===user.email && liPass.value===user.pass) show("location"); }
+function allowLocation(){ navigator.geolocation.getCurrentPosition(()=>{ show("food"); renderMenu(); }); }
+
+function renderMenu(){
+    menu.innerHTML="";
+    let s=search.value.toLowerCase();
+    let f=filter.value;
+    foods.filter(x=>(f==="All"||x.cat===f)&&x.name.toLowerCase().includes(s)).forEach(x=>{
+        let q=cart[x.id]?.qty || 0;
+        menu.innerHTML+=`
+        <div class="card">
+            <img src="${x.img}" alt="${x.name}">
+            <h3>${x.name}</h3>
+            <div class="price">₹${x.price}</div>
+            <div class="qty">
+                <button onclick="updateQty(${x.id},-1)">−</button>
+                <span>${q}</span>
+                <button onclick="updateQty(${x.id},1)">+</button>
+            </div>
+            <button class="add-btn" onclick="addToCart(${x.id})">Add to Cart</button>
+        </div>`;
+    });
+    renderCart();
+}
+
+function updateQty(id,delta){
+    let item=foods.find(x=>x.id===id);
+    if(!cart[id]) cart[id]={...item,qty:0};
+    cart[id].qty+=delta;
+    if(cart[id].qty<=0) delete cart[id];
+    localStorage.setItem("cart",JSON.stringify(cart));
+    renderMenu();
+}
+
+function addToCart(id){
+    if(!cart[id]) cart[id]={...foods.find(x=>x.id===id),qty:1};
+    else cart[id].qty+=1;
+    localStorage.setItem("cart",JSON.stringify(cart));
+    renderMenu();
+}
+
+function renderCart(){
+    cartDiv.innerHTML="";
+    let t=0;
+    Object.values(cart).forEach(i=>{
+        t+=i.price*i.qty;
+        cartDiv.innerHTML+=`
+        <div class="cart-item">
+            <span>${i.name} x ${i.qty}</span>
+            <span>₹${i.price*i.qty}</span>
+        </div>`;
+    });
+    total.innerText="Total: ₹"+t;
+}
+
+function placeOrder(){
+    if(Object.keys(cart).length===0){ alert("Cart is empty"); return; }
+    alert("Order placed successfully! 🍽️ Total: ₹"+Object.values(cart).reduce((a,b)=>a+b.price*b.qty,0));
+    cart={};
+    localStorage.removeItem("cart");
+    renderMenu();
+}
+renderMenu();
+</script>
+
+</body>
+</html>
